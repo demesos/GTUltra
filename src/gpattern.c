@@ -5,6 +5,7 @@
 #define GPATTERN_C
 
 #include "goattrk2.h"
+#include "gclipboard.h"
 
 
 unsigned char notekeytbl1[] = { KEY_Z, KEY_S, KEY_X, KEY_D, KEY_C, KEY_V,
@@ -901,6 +902,13 @@ void patterncommands(GTOBJECT *gt, int midiNote)
 	case KEY_C:
 	case KEY_X:
 
+		// Ctrl+Shift+C: Export notes only to clipboard (new feature)
+		if (ctrlpressed && shiftpressed && jrawkey == KEY_C)
+		{
+			exportPatternNotesToClipboard(gt, c2);
+			return;
+		}
+
 		if (shiftOrCtrlPressed)
 		{
 			if (editorInfo.epmarkchn != -1)
@@ -985,6 +993,13 @@ void patterncommands(GTOBJECT *gt, int midiNote)
 		break;
 
 	case KEY_V:
+		// Ctrl+Shift+V: Import notes only from clipboard (new feature)
+		if (ctrlpressed && shiftpressed)
+		{
+			importPatternNotesFromClipboard(gt, c2);
+			return;
+		}
+
 		if ((shiftOrCtrlPressed) && (patterncopyrows))
 		{
 			for (c = 0; c < patterncopyrows; c++)

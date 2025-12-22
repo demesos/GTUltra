@@ -70,6 +70,7 @@ void onlinehelp(int standalone,int context,GTOBJECT *gt)
     "SHIFT+M,N Choose highlighting step",
     "SHIFT+O,P Shrink/expand pattern",
     "SHIFT+X,C,V Cut,copy,paste pattern",
+    "CTRL+SHIFT+C,V Copy,paste notes to/from clipboard",
     "SHIFT+Z Cycle autoadvance-mode",
     "SHIFT+1-6 Mute channel",
     NULL

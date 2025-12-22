@@ -123,7 +123,7 @@ unsigned int lmanMode = 1;
 unsigned int editPaletteMode = 0;
 unsigned int enablekeyrepeat = 0;
 unsigned int enableAntiAlias = 1;
-int useOriginalGTFunctionKeys = 0;
+int useOriginalGTFunctionKeys = 1;  // Default to original GT key bindings
 int SIDTracker64ForIPadIsAmazing = 1;
 
 float masterVolume = 1.0f;
