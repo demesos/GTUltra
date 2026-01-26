@@ -2200,15 +2200,16 @@ int mergesong(GTOBJECT *gt)
 		}
 	}
 
-	// Determine amount of songs
+	// Determine amount of songs (find highest used subtune)
 	c = MAX_SONGS - 1;
 	for (;;)
 	{
-		if ((songlen[c][0]) &&
-			(songlen[c][1]) &&
-			(songlen[c][2]) &&
-			(songlen[c][3]) &&
-			(songlen[c][4]) &&
+		// Check if ANY channel has data (OR logic, not AND)
+		if ((songlen[c][0]) ||
+			(songlen[c][1]) ||
+			(songlen[c][2]) ||
+			(songlen[c][3]) ||
+			(songlen[c][4]) ||
 			(songlen[c][5])) break;
 		if (c == 0) break;
 		c--;
@@ -2216,7 +2217,7 @@ int mergesong(GTOBJECT *gt)
 
 	pattbase = highestusedpattern + 1;
 	instrbase = highestusedinstr;
-	songbase = c + 1;
+	songbase = c + 1;  // Load into next available subtune
 
 	//sprintf(textbuffer, "pattbase:%x", pattbase);
 	//printtext(PANEL_NAMES_X, PANEL_NAMES_Y + 3, getColor(CTITLES_FOREGROUND, CGENERAL_BACKGROUND), textbuffer);
