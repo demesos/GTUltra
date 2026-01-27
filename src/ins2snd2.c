@@ -1,5 +1,6 @@
 /*
  * GoatTracker V2.0 Instrument -> Sound effect convertor
+ * Version 2.761 upgraded by Wil
  */
 
 #include <stdio.h>
@@ -9,15 +10,18 @@
 #include "bme_end.h"
 #include "gcommon.h"
 
-int main(int argc, char **argv);
+#define BASE_NOTE 0xa4	//C-3
+
 unsigned char swapnybbles(unsigned char n);
 void outputbyte(unsigned char c);
 
 int covert = 0;
 int binary = 0;
+int smart_mode = 1;
 int bytecount = 0;
 FILE *handle;
 FILE *out;
+int lastnote=0x10;
 
 int main(int argc, char **argv)
 {
@@ -38,7 +42,8 @@ int main(int argc, char **argv)
   {
     printf("Usage: INS2SND2 <instrumentfile> <sourcecodefile> <options>\n"
            "-b Produce binary output\n"
-           "-c Produce output in CovertScript format (deprecated)\n\n"
+           "-c Produce output in CovertScript format (deprecated)\n"
+           "-n Native mode, turns off smart mode\n\n"
            "Takes a GoatTracker V1.xx or V2 instrument and outputs the corresponding sound\n"
            "effect data as source code (default) or binary. Things that can't be converted\n"
            "and will result in an error:\n"
@@ -50,7 +55,7 @@ int main(int argc, char **argv)
            "- Wavetable loops\n"
            "- Pulsewidth modulation\n"
            "- Filter settings\n");
-    return 1;
+    return EXIT_FAILURE;
   }
 
   if (argc > 3)
@@ -69,6 +74,10 @@ int main(int argc, char **argv)
           case 'c':
           covert = 1;
           break;
+          
+          case 'n':
+          smart_mode = 0;
+          break;          
         }
       }
     }
@@ -79,7 +88,7 @@ int main(int argc, char **argv)
   if (!handle)
   {
     printf("ERROR: Can't open instrumentfile\n");
-    return 1;
+    return EXIT_FAILURE;
   }
 
   memset(wavetable, 0, MAX_TABLELEN*2);
@@ -165,7 +174,7 @@ int main(int argc, char **argv)
   if (!fileok)
   {
     printf("ERROR: File is not a GoatTracker instrument!\n");
-    return 1;
+    return EXIT_FAILURE;
   }
 
   if (!binary)
@@ -176,7 +185,7 @@ int main(int argc, char **argv)
   if (!out)
   {
     printf("ERROR: Can't write to output file.\n");
-    return 1;
+    return EXIT_FAILURE;
   }
 
   d = 0;
@@ -186,31 +195,46 @@ int main(int argc, char **argv)
   d++;
   outputbyte(swapnybbles(pulse));
   d++;
-
+  
   for (c = 0; c < MAX_TABLELEN; c++)
-  {
+  {  
     if (wavetable[c*2] == 0xff)
     {
       outputbyte(0);
       d++;
       break;
     }
+    if (wavetable[c*2] <= 0x0f)		//wait 1..15 frames
+    {
+      for (int i=0; i<wavetable[c*2];i++)
+        outputbyte(lastnote);
+        d++;
+      continue;
+    }  
     if (wavetable[c*2+1] < 0x82)
     {
-      printf("ERROR: Relative note or absolute C-0, C#0 found\n");
-      fclose(out);
-      return 1;
+      if (smart_mode) {
+        if (wavetable[c*2+1]>=0x60)
+          wavetable[c*2+1]+= -0x80 + BASE_NOTE;
+        else
+          wavetable[c*2+1]+= BASE_NOTE;        
+      } else {
+        printf("ERROR: Relative note or absolute C-0, C#0 found\n");
+        fclose(out);
+        return EXIT_FAILURE;
+      }
     }
     if (wavetable[c*2] > 0x81)
     {
       printf("ERROR: Waveform greater than $81 found\n");
       fclose(out);
-      return 1;
+      return EXIT_FAILURE;
     }
     if (wavetable[c*2])
     {
       currwave = wavetable[c*2];
     }
+    lastnote=wavetable[c*2+1];
     outputbyte(wavetable[c*2+1]);
     d++;
     if (currwave != prevwave)
@@ -224,10 +248,10 @@ int main(int argc, char **argv)
   {
     fclose(out);
     printf("ERROR: Sound effect exceeds 255 bytes\n");
-    return 1;
+    return EXIT_FAILURE;
   }
   fclose(out);
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 void outputbyte(unsigned char c)
@@ -275,4 +299,3 @@ unsigned char swapnybbles(unsigned char n)
 
   return (lownybble << 4) | highnybble;
 }
-

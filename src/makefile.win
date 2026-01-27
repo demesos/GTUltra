@@ -1,26 +1,106 @@
 #
-# Win32 makefile
+# Win32 makefile - FIXED for console output in gt2reloc and CLI tools
+#
+# The key fix: Use -Wl,--subsystem,console to override the subsystem
+# even when linking with SDL2main (which normally forces GUI mode)
 #
 
 CC:=gcc
 CXX:=g++
 PREFIX=../win32/
 SUFFIX=.exe
-LIBS=-lmingw32 -lSDL2main -lSDL2.dll -lwinmm -mwindows -static-libstdc++ -static-libgcc -static 
+
+# For GUI application (gtultra.exe) - needs SDL2main and -mwindows
+LIBS_GUI=-lmingw32 -lSDL2main -lSDL2.dll -lwinmm -mwindows -static-libstdc++ -static-libgcc -static
+
+# For console applications (gt2reloc.exe, etc.)
+# Keep SDL2main (required by BME library) but force console subsystem with linker flag
+LIBS_CONSOLE=-lmingw32 -lSDL2main -lSDL2.dll -lwinmm -Wl,--subsystem,console -static-libstdc++ -static-libgcc -static
+
+# Set default to console for command-line tools
+LIBS=$(LIBS_CONSOLE)
+
 RM=	-del
 
-include makefile.common
+# Don't include the default gtultra rule from makefile.common
+# We define it below with Windows-specific requirements
+MAKEFLAGS += --no-builtin-rules
 
-$(PREFIX)gtultra$(SUFFIX): goatdata.o gt2stereo.o gsong.o gorder.o gpattern.o ginstr.o gtable.o gplay.o gdisplay.o gtabledisplay.o gclipboard.o\
-resid/envelope.o resid/extfilt.o resid/filter.o resid/pot.o resid/sid.o resid/wave.o resid/wave6581__ST.o \
-resid/wave6581_P_T.o resid/wave6581_PS_.o resid/wave6581_PST.o resid/wave8580__ST.o resid/wave8580_P_T.o \
-resid/wave8580_PS_.o resid/wave8580_PST.o resid/voice.o \
-resid-fp/envelopefp.o resid-fp/extfiltfp.o resid-fp/filterfp.o resid-fp/potfp.o resid-fp/sidfp.o \
-resid-fp/wavefp.o resid-fp/voicefp.o \
-RtMidi.o \
-asm/asmtab.o asm/chnkpool.o asm/expr.o asm/lexyy.o asm/log.o asm/membuf.o asm/membufio.o asm/namedbuf.o asm/parse.o \
-asm/pc.o asm/vec.o \
-bme/bme_gfx.o bme/bme_snd.o bme/bme_win.o bme/bme_mou.o bme/bme_kbd.o bme/bme_io.o bme/bme_end.o bme/bme.o
+# List of executables (same as in makefile.common)
+EXE=	$(PREFIX)gtultra$(SUFFIX) \
+	$(PREFIX)gt2reloc$(SUFFIX) \
+	$(PREFIX)ins2snd2$(SUFFIX) \
+	$(PREFIX)ss2stereo$(SUFFIX) \
+	$(PREFIX)mod2sng2$(SUFFIX)
+
+all: $(EXE)
+
+# Common object files for most executables
+COMMON_OBJS = goatdata.o gsong.o gorder.o gpattern.o ginstr.o gtable.o gplay.o gdisplay.o \
+	gfile.o ghelp.o gsound.o gconsole.o gsid.o ginfo.o gmidi.o gundo.o gchareditor.o RtMidi.o \
+	gmidiselect.o gpaletteeditor.o gfkeys.o gclipboard.o
+
+RESID_OBJS = resid/envelope.o resid/extfilt.o resid/filter.o resid/pot.o resid/sid.o resid/wave.o \
+	resid/wave6581__ST.o resid/wave6581_P_T.o resid/wave6581_PS_.o resid/wave6581_PST.o \
+	resid/wave8580__ST.o resid/wave8580_P_T.o resid/wave8580_PS_.o resid/wave8580_PST.o resid/voice.o
+
+RESID_FP_OBJS = resid-fp/envelopefp.o resid-fp/extfiltfp.o resid-fp/filterfp.o resid-fp/potfp.o \
+	resid-fp/sidfp.o resid-fp/wavefp.o resid-fp/voicefp.o
+
+ASM_OBJS = asm/asmtab.o asm/chnkpool.o asm/expr.o asm/lexyy.o asm/log.o asm/membuf.o \
+	asm/membufio.o asm/namedbuf.o asm/parse.o asm/pc.o asm/vec.o
+
+BME_OBJS = bme/bme_gfx.o bme/bme_snd.o bme/bme_win.o bme/bme_mou.o bme/bme_kbd.o \
+	bme/bme_io.o bme/bme_end.o bme/bme.o
+
+# GTULTRA - GUI application with full features
+$(PREFIX)gtultra$(SUFFIX): gt2stereo.o greloc.o gtabledisplay.o $(COMMON_OBJS) $(RESID_OBJS) $(RESID_FP_OBJS) $(ASM_OBJS) $(BME_OBJS)
 	windres gt2stereo.rc goaticon.o
-	$(CXX) -o $@ $^ goaticon.o $(LIBS)
+	$(CXX) -o $@ $^ goaticon.o $(LIBS_GUI)
 	strip $@
+
+# GT2RELOC - Console application (packer/relocator)
+$(PREFIX)gt2reloc$(SUFFIX): gt2reloc.o $(COMMON_OBJS) $(RESID_OBJS) $(RESID_FP_OBJS) $(ASM_OBJS) $(BME_OBJS)
+	$(CXX) -DGT2RELOC -o $@ $^ $(LIBS_CONSOLE)
+	strip $@
+
+# Simple console utilities (don't need full BME/SDL)
+$(PREFIX)mod2sng2$(SUFFIX): mod2sng2.o bme/bme_end.o
+	$(CC) -o $@ $^
+	strip $@
+
+$(PREFIX)ins2snd2$(SUFFIX): ins2snd2.o bme/bme_end.o
+	$(CC) -o $@ $^
+	strip $@
+
+$(PREFIX)ss2stereo$(SUFFIX): ss2stereo.o bme/bme_end.o
+	$(CC) -o $@ $^
+	strip $@
+
+# Data file generation
+gt2stereo.dat: player.s altplayer.s player3.s altplayer3.s player9.s altplayer9.s player12.s altplayer12.s \
+	0default.gtp 1default.gtp 2default.gtp 3default.gtp 4default.gtp 5default.gtp 6default.gtp 7default.gtp 8default.gtp \
+	chargen.bin palette.bin cursor.bin bcursor.bin goattrk2.bmp gt2stereo.seq
+	./bme/datafile $@ gt2stereo.seq
+
+goatdata.c: gt2stereo.dat
+	./bme/dat2inc $< $@
+
+# Compilation rules
+CFLAGS+=-Ibme -Iasm -O3 -Wall
+CXXFLAGS+=$(CFLAGS) -fpermissive
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+# Clean
+clean:
+	$(RM) *.o *~
+	$(RM) asm\*.o
+	$(RM) bme\*.o
+	$(RM) resid\*.o
+	$(RM) resid-fp\*.o
+	$(RM) $(EXE)
