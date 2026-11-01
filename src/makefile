@@ -18,6 +18,7 @@ SDL2_CONFIG?=sdl2-config
 CFLAGS+=`$(SDL2_CONFIG) --cflags` `pkg-config --cflags alsa`
 PREFIX=../linux/
 SUFFIX=
+$(shell mkdir -p $(PREFIX))
 
 ifeq ($(STATIC_SDL),1)
 LIBS+=`$(SDL2_CONFIG) --static-libs` `pkg-config --libs alsa` -lpthread -static-libstdc++ -static-libgcc
@@ -33,3 +34,14 @@ TOOL_LDFLAGS=-static
 endif
 
 include makefile.common
+
+# The repo ships the data helpers only as Windows .exe; build native ones when
+# gt2stereo.dat / goatdata.c have to be regenerated.
+gt2stereo.dat: | bme/datafile
+goatdata.c: | bme/dat2inc
+
+bme/datafile: bme/datafile.c bme/bme_end.c
+	$(CC) -O2 -Ibme `$(SDL2_CONFIG) --cflags` -o $@ bme/datafile.c bme/bme_end.c
+
+bme/dat2inc: bme/dat2inc.c
+	$(CC) -O2 -o $@ bme/dat2inc.c
