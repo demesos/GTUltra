@@ -39,8 +39,8 @@
 
 #ifdef _WIN32
 #define __WINDOWS_MM__ // Include this line for windows building. 
-#elif __linux__
-#define __LINUX_ALSA__	// Include this line for Linux
+#elif defined(__linux__) && !defined(GT_NO_MIDI)
+#define __LINUX_ALSA__	// Include this line for Linux (GT_NO_MIDI: dummy MIDI, no ALSA)
 #elif __APPLE__
 #define __MACOSX_CORE__	// Include this line for Linux
 #endif
